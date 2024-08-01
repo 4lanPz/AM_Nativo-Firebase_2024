@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">nativo_flutter</string>
+    <string name="gesti_n_de_datos_firebase_storage">Gestión de datos Firebase Storage</string>
+    <string name="guardar_datos">Guardar datos</string>
+    <string name="cerrar_sesi_n">Cerrar sesión</string>
+    <string name="subir_archivo">Subir archivo</string>
+    <string name="correo_electr_nico">Correo electrónico</string>
+    <string name="contrase_a">Contraseña</string>
+    <string name="inciar_sesi_n">Inciar sesión</string>
+    <string name="inicio_de_sesi_n">Inicio de sesión</string>
+    <string name="previsualizaci_n">Previsualización</string>
 </resources>
