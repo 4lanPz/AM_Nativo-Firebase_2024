@@ -26,6 +26,10 @@ class MainActivity : AppCompatActivity() {
         private const val PICK_FILE_REQUEST = 1
         private const val PREVIEW_REQUEST_CODE = 2
         private const val FOLDER_NAME = "AndroidNativo" // Nombre de la carpeta
+
+        // Credenciales predefinidas
+        private const val PREDEFINED_EMAIL = "alan@gmail.com"
+        private const val PREDEFINED_PASSWORD = "Fnaf4."
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +42,9 @@ class MainActivity : AppCompatActivity() {
         uploadButton = findViewById(R.id.uploadButton)
         logoutButton = findViewById(R.id.logoutButton)
         fileListView = findViewById(R.id.fileListView)
+
+        // Intentar iniciar sesión automáticamente
+        autoSignIn()
 
         // Mostrar archivos en Firebase Storage
         listFiles()
@@ -53,11 +60,25 @@ class MainActivity : AppCompatActivity() {
         // Cerrar sesión
         logoutButton.setOnClickListener {
             auth.signOut()
+            // Redirigir a una pantalla de inicio de sesión o pantalla principal
+            // Por ejemplo, podrías reiniciar la actividad o cerrar la aplicación
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
-            // No permite regresar
             finish()
         }
+    }
+
+    private fun autoSignIn() {
+        auth.signInWithEmailAndPassword(PREDEFINED_EMAIL, PREDEFINED_PASSWORD)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Login exitoso
+                    showToast("Bienvenido")
+                } else {
+                    showToast("Error en el inicio de sesión: ${task.exception?.message}")
+                    // Puedes redirigir a una pantalla de error o mostrar un mensaje
+                }
+            }
     }
 
     // Mostrar archivos en Firebase Storage

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nativo Flutter</string>
+    <string name="app_name">Nativo Firebase</string>
     <string name="gesti_n_de_datos_firebase_storage">Gestión de datos Firebase Storage</string>
     <string name="guardar_datos">Guardar datos</string>
     <string name="cerrar_sesi_n">Cerrar sesión</string>

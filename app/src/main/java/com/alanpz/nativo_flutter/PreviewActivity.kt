@@ -20,9 +20,15 @@ class PreviewActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var textView: TextView
     private lateinit var closeButton: Button
+    private lateinit var prevPageButton: Button
+    private lateinit var nextPageButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var fileRef: StorageReference
     private lateinit var fileName: String
+
+    private var currentPage = 0
+    private var pdfRenderer: PdfRenderer? = null
+    private var parcelFileDescriptor: ParcelFileDescriptor? = null
 
     companion object {
         private const val FOLDER_NAME = "AndroidNativo" // Nombre de la carpeta
@@ -35,10 +41,11 @@ class PreviewActivity : AppCompatActivity() {
         imageView = findViewById(R.id.imageView)
         textView = findViewById(R.id.textView)
         closeButton = findViewById(R.id.closeButton)
+        prevPageButton = findViewById(R.id.prevPageButton)
+        nextPageButton = findViewById(R.id.nextPageButton)
         progressBar = findViewById(R.id.progressBar)
 
         fileName = intent.getStringExtra("fileName") ?: return
-        // Accede a la carpeta "AndroidNativo"
         fileRef = FirebaseStorage.getInstance().reference.child(FOLDER_NAME).child(fileName)
 
         previewFile()
@@ -46,10 +53,17 @@ class PreviewActivity : AppCompatActivity() {
         closeButton.setOnClickListener {
             finish()
         }
+
+        prevPageButton.setOnClickListener {
+            showPreviousPage()
+        }
+
+        nextPageButton.setOnClickListener {
+            showNextPage()
+        }
     }
 
     private fun previewFile() {
-        // Mostrar ProgressBar mientras se carga el archivo
         progressBar.visibility = View.VISIBLE
         fileRef.getBytes(Long.MAX_VALUE).addOnSuccessListener { bytes ->
             try {
@@ -59,6 +73,9 @@ class PreviewActivity : AppCompatActivity() {
                         imageView.setImageBitmap(bitmap)
                         imageView.visibility = View.VISIBLE
                         textView.visibility = View.GONE
+                        prevPageButton.visibility = View.GONE
+                        nextPageButton.visibility = View.GONE
+                        pdfRenderer?.close()
                     }
 
                     fileName.endsWith(".txt") -> {
@@ -66,28 +83,37 @@ class PreviewActivity : AppCompatActivity() {
                         textView.text = text
                         textView.visibility = View.VISIBLE
                         imageView.visibility = View.GONE
+                        prevPageButton.visibility = View.GONE
+                        nextPageButton.visibility = View.GONE
+                        pdfRenderer?.close()
                     }
 
                     fileName.endsWith(".pdf") -> {
                         val file = File(cacheDir, fileName)
                         file.writeBytes(bytes)
                         displayPdf(file)
-                        imageView.visibility = View.GONE
+                        imageView.visibility = View.VISIBLE
                         textView.visibility = View.GONE
+                        prevPageButton.visibility = View.VISIBLE
+                        nextPageButton.visibility = View.VISIBLE
                     }
 
                     else -> {
                         textView.text = "Tipo de archivo no soportado"
                         textView.visibility = View.VISIBLE
                         imageView.visibility = View.GONE
+                        prevPageButton.visibility = View.GONE
+                        nextPageButton.visibility = View.GONE
+                        pdfRenderer?.close()
                     }
                 }
             } catch (e: Exception) {
                 textView.text = "Error al procesar el archivo: ${e.message}"
                 textView.visibility = View.VISIBLE
                 imageView.visibility = View.GONE
+                prevPageButton.visibility = View.GONE
+                nextPageButton.visibility = View.GONE
             } finally {
-                // Ocultar ProgressBar cuando termine la carga
                 progressBar.visibility = View.GONE
             }
         }
@@ -95,20 +121,71 @@ class PreviewActivity : AppCompatActivity() {
                 textView.text = "Error: ${e.message}"
                 textView.visibility = View.VISIBLE
                 imageView.visibility = View.GONE
+                prevPageButton.visibility = View.GONE
+                nextPageButton.visibility = View.GONE
                 progressBar.visibility = View.GONE
             }
     }
 
     private fun displayPdf(file: File) {
-        val parcelFileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        val pdfRenderer = PdfRenderer(parcelFileDescriptor)
-        if (pdfRenderer.pageCount > 0) {
-            val page = pdfRenderer.openPage(0)
+        try {
+            parcelFileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+
+            if (pdfRenderer?.pageCount ?: 0 > 0) {
+                currentPage = 0
+                showPage(currentPage)
+            } else {
+                textView.text = "El PDF está vacío"
+                textView.visibility = View.VISIBLE
+                imageView.visibility = View.GONE
+                prevPageButton.visibility = View.GONE
+                nextPageButton.visibility = View.GONE
+            }
+        } catch (e: Exception) {
+            textView.text = "Error al procesar el PDF: ${e.message}"
+            textView.visibility = View.VISIBLE
+            imageView.visibility = View.GONE
+            prevPageButton.visibility = View.GONE
+            nextPageButton.visibility = View.GONE
+        }
+    }
+
+    private fun showPage(pageIndex: Int) {
+        pdfRenderer?.let { pdfRenderer ->
+            if (pageIndex < 0 || pageIndex >= pdfRenderer.pageCount) return
+
+            val page = pdfRenderer.openPage(pageIndex)
             val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             imageView.setImageBitmap(bitmap)
             page.close()
+
+            currentPage = pageIndex
+            updateNavigationButtons()
         }
-        pdfRenderer.close()
+    }
+
+    private fun showPreviousPage() {
+        if (currentPage > 0) {
+            showPage(currentPage - 1)
+        }
+    }
+
+    private fun showNextPage() {
+        if (currentPage < (pdfRenderer?.pageCount ?: 0) - 1) {
+            showPage(currentPage + 1)
+        }
+    }
+
+    private fun updateNavigationButtons() {
+        prevPageButton.isEnabled = currentPage > 0
+        nextPageButton.isEnabled = currentPage < (pdfRenderer?.pageCount ?: 0) - 1
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        pdfRenderer?.close()
+        parcelFileDescriptor?.close()
     }
 }
